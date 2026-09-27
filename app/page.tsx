@@ -1,69 +1,25 @@
-import Image from "next/image";
+import { Activity, ArrowDownRight, ArrowRight, Boxes, Bolt, CircleAlert, Clock3, Factory, Gauge, MapPin, PackageCheck, Users, Wind } from "lucide-react";
+import Link from "next/link";
+import { events, zones, zoneName } from "@/lib/mockData";
+import { MetricCard, Panel, SectionHeading, StatusPill } from "@/components/ui";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+function timeAgo(timestamp: string) { const mins = Math.max(1, Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000)); return mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`; }
+
+export default function DashboardPage() {
+  const totalEnergy = zones.reduce((sum, zone) => sum + zone.energyUsage, 0);
+  const activeZones = zones.filter((zone) => zone.status === "Active").length;
+  const openAlarms = events.filter((event) => event.type === "Alarm" && event.resolutionStatus === "Open").length;
+  const statusColors = { Active: "border-emerald-400/20 bg-emerald-400/[0.035]", Idle: "border-amber-400/20 bg-amber-400/[0.035]", Offline: "border-rose-400/25 bg-rose-400/[0.045]" };
+  const accentColors = { Active: "bg-emerald-400", Idle: "bg-amber-400", Offline: "bg-rose-400" };
+  return <div className="space-y-7">
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.19em] text-slate-500"><MapPin size={12} className="text-cyan-400"/> Jakarta Plant 01 <span className="text-slate-700">/</span> Operations center</div><h1 className="text-[25px] font-semibold tracking-tight text-slate-50 sm:text-[29px]">Unified operations</h1><p className="mt-1.5 text-xs text-slate-500">Live overview of facility performance and activity.</p></div><div className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-[#0e141b] px-3 py-2 text-[10px] text-slate-400"><Clock3 size={13} className="text-slate-500"/> Monday, 28 September 2026</div></div>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"><MetricCard label="Total energy" value={totalEnergy.toLocaleString()} unit="kWh" delta="↓ 4.2%" hint="vs. last shift" icon={Bolt} tone="cyan"/><MetricCard label="Active zones" value={`${activeZones} / ${zones.length}`} delta="+1 zone" hint="since last shift" icon={Activity} tone="green"/><MetricCard label="Open alarms" value={String(openAlarms).padStart(2,"0")} delta="Needs attention" hint="· 1 critical" icon={CircleAlert} tone="rose"/><MetricCard label="Total production" value="8,420" unit="units" delta="↑ 8.6%" hint="of 10,000 target" icon={PackageCheck} tone="amber"/></div>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(330px,0.85fr)]">
+      <Panel className="overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-4"><SectionHeading eyebrow="Facility overview" title="Facility status" detail="Zone activity · real-time sensor data"/><div className="flex items-center gap-3 text-[9px] text-slate-500"><span className="flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-emerald-400"/>Active</span><span className="flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-amber-400"/>Idle</span><span className="flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-rose-400"/>Offline</span></div></div>
+        <div className="relative p-4 sm:p-5"><div className="pointer-events-none absolute inset-0 opacity-[0.13]" style={{backgroundImage:"linear-gradient(rgba(148,163,184,.15) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.15) 1px, transparent 1px)",backgroundSize:"28px 28px"}}/><div className="relative grid grid-cols-2 gap-3 md:grid-cols-4">{zones.map((zone,index)=><div key={zone.id} className={`relative min-h-[132px] rounded-xl border p-3.5 transition hover:-translate-y-0.5 hover:brightness-110 ${statusColors[zone.status]} ${index===4?"md:col-span-2":""}`}><div className={`absolute left-0 top-4 h-7 w-0.5 rounded-r ${accentColors[zone.status]}`}/><div className="flex items-start justify-between"><span className="font-mono text-[9px] tracking-wide text-slate-600">{zone.id}</span><span className={`h-1.5 w-1.5 rounded-full ${accentColors[zone.status]} ${zone.status === "Active" ? "shadow-[0_0_8px_rgba(52,211,153,0.65)]" : ""}`}/></div><div className="mt-3 text-xs font-semibold text-slate-200">{zone.name}</div><div className="mt-1 flex items-center gap-1 text-[9px] text-slate-500"><Users size={10}/>{zone.isOccupied?"Occupied":"Unoccupied"}<span className="mx-0.5 text-slate-700">·</span>{zone.status}</div><div className="mt-3 flex items-end justify-between"><div><span className="font-mono text-sm font-medium text-slate-300">{zone.energyUsage}</span><span className="ml-1 text-[9px] text-slate-600">kWh</span></div>{zone.status==="Idle"&&<span className="text-[8px] uppercase tracking-wider text-amber-400">Check usage</span>}{zone.status==="Offline"&&<span className="text-[8px] uppercase tracking-wider text-rose-400">Sensor offline</span>}</div></div>)}</div><div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3 text-[9px] text-slate-600"><span>LAST SYNC · 14:32:08 WIB</span><span className="flex items-center gap-1.5"><i className="h-1 w-1 rounded-full bg-emerald-400"/>8 sensors connected</span></div></div>
+      </Panel>
+      <Panel className="flex flex-col"><div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4"><SectionHeading eyebrow="Live feed" title="Recent events"/><Link href="/events" className="flex items-center gap-1 text-[10px] text-cyan-300 hover:text-cyan-200">All events <ArrowRight size={12}/></Link></div><div className="flex-1 divide-y divide-white/[0.045]">{events.slice(0,4).map((event)=><div key={event.id} className="flex gap-3 px-5 py-4"><div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${event.type==="Alarm"?"bg-rose-400/10 text-rose-300":event.type==="Warning"?"bg-amber-400/10 text-amber-300":"bg-cyan-400/10 text-cyan-300"}`}>{event.type==="Alarm"?<CircleAlert size={13}/>:event.type==="Warning"?<ArrowDownRight size={13}/>:<Activity size={13}/>}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><StatusPill value={event.type}/><span className="shrink-0 font-mono text-[9px] text-slate-600">{timeAgo(event.timestamp)}</span></div><div className="mt-2 truncate text-[11px] text-slate-300">{event.description}</div><div className="mt-1 font-mono text-[9px] text-slate-600">{zoneName(event.zoneId)} <span className="mx-1 text-slate-700">/</span> {event.id}</div></div></div>)}</div><Link href="/events" className="flex items-center justify-center gap-2 border-t border-white/[0.06] py-3 text-[10px] text-slate-500 transition hover:text-slate-300">View event log <ArrowRight size={12}/></Link></Panel>
     </div>
-  );
+    <div className="grid gap-4 md:grid-cols-3"><Panel className="flex items-center gap-4 p-4"><div className="rounded-lg bg-cyan-300/[0.08] p-2.5 text-cyan-300"><Gauge size={17}/></div><div className="flex-1"><div className="text-[10px] uppercase tracking-[0.13em] text-slate-500">Line efficiency</div><div className="mt-1 text-lg font-semibold">84.6<span className="ml-1 text-[11px] font-normal text-slate-500">%</span></div></div><div className="h-1 w-12 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full w-[84%] rounded-full bg-cyan-400"/></div></Panel><Panel className="flex items-center gap-4 p-4"><div className="rounded-lg bg-amber-300/[0.08] p-2.5 text-amber-300"><Wind size={17}/></div><div className="flex-1"><div className="text-[10px] uppercase tracking-[0.13em] text-slate-500">Energy intensity</div><div className="mt-1 text-lg font-semibold">0.42<span className="ml-1 text-[11px] font-normal text-slate-500">kWh / unit</span></div></div><div className="text-[9px] text-emerald-400">↓ 2.1%</div></Panel><Panel className="flex items-center gap-4 p-4"><div className="rounded-lg bg-emerald-300/[0.08] p-2.5 text-emerald-300"><Boxes size={17}/></div><div className="flex-1"><div className="text-[10px] uppercase tracking-[0.13em] text-slate-500">Shift A progress</div><div className="mt-1 text-lg font-semibold">84<span className="ml-1 text-[11px] font-normal text-slate-500">% complete</span></div></div><div className="text-[9px] text-slate-500">Ends 16:00</div></Panel></div>
+  </div>;
 }
