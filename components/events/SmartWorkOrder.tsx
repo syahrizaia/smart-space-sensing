@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, ClipboardPlus, Wrench } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { zoneName, type FacilityEvent } from "@/lib/mockData";
 
 const causes = ["Mechanical wear", "Electrical fault", "Sensor malfunction", "Operating conditions", "Other"];
@@ -10,7 +10,6 @@ export function SmartWorkOrder({ event, onSubmit }: { event: FacilityEvent | nul
   const [details, setDetails] = useState("");
   const [assignee, setAssignee] = useState("Mechanical Maintenance");
   const [submitted, setSubmitted] = useState(false);
-  useEffect(() => { setRootCause(""); setDetails(""); setSubmitted(false); }, [event?.id]);
   const submit = (form: FormEvent<HTMLFormElement>) => {
     form.preventDefault();
     if (!event || !rootCause || !details.trim()) return;

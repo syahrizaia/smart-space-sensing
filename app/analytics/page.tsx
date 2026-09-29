@@ -1,17 +1,77 @@
-import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, Bolt, Download, Leaf, Timer, TriangleAlert } from "lucide-react";
+import { Activity, ArrowDownRight, Bolt, Clock3, Gauge, TriangleAlert } from "lucide-react";
 import { EnergyChart } from "@/components/energy-chart";
+import { ShiftTrendChart } from "@/components/shift-trend-chart";
 import { MetricCard, Panel, SectionHeading } from "@/components/ui";
-import { energyByZone } from "@/lib/mockData";
+import { getEnergyAnalytics } from "@/lib/analytics-service";
 
-export default function AnalyticsPage() {
-  const wasteZones = energyByZone.filter((zone) => zone.occupancy < 2 && zone.energy > 50);
+const formatNumber = (value: number | null, digits = 0) =>
+  value === null ? "—" : value.toLocaleString("en-US", { maximumFractionDigits: digits });
+
+export default async function AnalyticsPage() {
+  const analytics = await getEnergyAnalytics();
+  const flagged = analytics.alerts;
+  const sourceNames = analytics.sources.map((source) => source.source);
+  const trendIsSample = analytics.shiftTrendMode === "sample";
+  const modeLabel = analytics.dataMode === "sample" ? "Sample data" : "Live readings";
+
   return <div className="space-y-7">
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 text-[10px] font-medium uppercase tracking-[0.19em] text-slate-500">Performance intelligence <span className="mx-1.5 text-slate-700">/</span> Energy</div><h1 className="text-[25px] font-semibold tracking-tight text-slate-50 sm:text-[29px]">Cost & energy optimization</h1><p className="mt-1.5 text-xs text-slate-500">Understand energy use against occupied production time.</p></div><button className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#0e141b] px-3 py-2 text-[10px] text-slate-300 hover:bg-white/[0.04]"><Download size={13}/> Export report</button></div>
-    <div className="flex flex-wrap items-center gap-2"><button className="rounded-lg border border-cyan-300/20 bg-cyan-300/[0.08] px-3 py-2 text-[10px] font-medium text-cyan-200">Today · Shift A</button><button className="rounded-lg border border-white/[0.07] bg-[#0e141b] px-3 py-2 text-[10px] text-slate-500">Last 7 days</button><button className="rounded-lg border border-white/[0.07] bg-[#0e141b] px-3 py-2 text-[10px] text-slate-500">Last 30 days</button><div className="ml-auto hidden text-[9px] text-slate-600 sm:block">UPDATED 14:32 WIB</div></div>
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"><MetricCard label="Energy consumed" value="761" unit="kWh" delta="↓ 4.2%" hint="vs. previous shift" icon={Bolt} tone="cyan"/><MetricCard label="Occupied time" value="36.8" unit="hrs" delta="↑ 2.6%" hint="across all zones" icon={Timer} tone="green"/><MetricCard label="Unoccupied waste" value="136" unit="kWh" delta="17.9%" hint="of total consumption" icon={TriangleAlert} tone="amber"/><MetricCard label="Estimated savings" value="$218" delta="↑ 12.4%" hint="this month" icon={Leaf} tone="green"/></div>
-    <Panel className="p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><SectionHeading eyebrow="Consumption analysis" title="Energy vs. occupancy by zone" detail="High consumption during low occupancy may signal avoidable energy waste."/><div className="rounded-lg border border-amber-300/10 bg-amber-300/[0.05] px-3 py-2 text-[9px] text-amber-200"><span className="mr-1.5 text-amber-300">●</span>{wasteZones.length} zones flagged for review</div></div><EnergyChart/><div className="mt-1 flex flex-wrap items-center gap-4 border-t border-white/[0.06] pt-3 text-[9px] text-slate-600"><span>ENERGY CONSUMPTION · KWH</span><span>OCCUPANCY TIME · HOURS</span><span className="ml-auto">SHIFT A · 06:00–14:00</span></div></Panel>
-    <Panel><div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-4"><SectionHeading eyebrow="Optimization opportunities" title="Zones to investigate" detail="High energy draw while utilization is low."/><Link href="/events" className="text-[10px] text-cyan-300 hover:text-cyan-200">Create work order →</Link></div><div className="divide-y divide-white/[0.045]">{wasteZones.map((zone) => <div key={zone.zone} className="flex flex-wrap items-center gap-4 px-5 py-3.5"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-300/[0.08] text-amber-300"><TriangleAlert size={14}/></div><div className="min-w-[130px] flex-1"><div className="text-xs font-medium text-slate-200">{zone.zone}</div><div className="mt-0.5 text-[9px] text-slate-500">{zone.occupancy} hrs occupied this shift</div></div><div className="text-right"><div className="font-mono text-xs text-slate-300">{zone.energy} <span className="text-[9px] text-slate-600">kWh</span></div><div className="mt-0.5 text-[9px] text-amber-400">{Math.round(zone.energy / 8)} kWh avg. during idle</div></div><div className="hidden w-24 sm:block"><div className="h-1 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-amber-400" style={{width:`${Math.min(100, zone.energy / 2)}%`}}/></div></div><ArrowDownRight size={14} className="text-amber-400"/></div>)}</div></Panel>
-    <p className="text-[9px] text-slate-600">Savings are estimates based on historical shift averages. <span className="ml-1 text-slate-700">Operational data refreshed every 60 seconds.</span></p>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.19em] text-slate-500">Performance intelligence <span className="mx-1.5 text-slate-700">/</span> Energy</div>
+        <h1 className="text-[25px] font-semibold tracking-tight text-slate-50 sm:text-[29px]">Cost &amp; energy optimization</h1>
+        <p className="mt-1.5 text-xs text-slate-500">Find energy use that does not match area activity and compare shifts.</p>
+      </div>
+      <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[10px] ${analytics.dataMode === "live" ? "border-emerald-300/15 bg-emerald-300/[0.05] text-emerald-200" : "border-amber-300/15 bg-amber-300/[0.05] text-amber-200"}`}>
+        <span className="h-1.5 w-1.5 rounded-full bg-current"/>{modeLabel}
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <MetricCard label="Energy consumed" value={formatNumber(analytics.summary.totalEnergyKwh)} unit="kWh" delta={analytics.dataMode === "live" ? "Current readings" : "Example readings"} hint="across monitored zones" icon={Bolt} tone="cyan"/>
+      <MetricCard label="Area utilization" value={formatNumber(analytics.summary.averageUtilizationPct, 1)} unit="%" delta="Occupied time" hint={analytics.dataMode === "live" ? "latest sensor status" : "sample shift occupancy"} icon={Activity} tone="green"/>
+      <MetricCard label="Empty area alerts" value={String(analytics.summary.flaggedZoneCount).padStart(2, "0")} delta={`Threshold ≥ ${analytics.idleThresholdKwh} kWh`} hint="energy draw while vacant" icon={TriangleAlert} tone="amber"/>
+      <MetricCard label="Energy in flagged areas" value={formatNumber(analytics.summary.energyInFlaggedZonesKwh)} unit="kWh" delta="Needs review" hint="consumption in empty zones" icon={Gauge} tone="rose"/>
+    </div>
+
+    <Panel className="p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SectionHeading eyebrow="Area utilization" title="Energy consumption vs. area use" detail="Red bars mark zones drawing energy above the empty-area threshold while WiFi/CSI reports them vacant."/>
+        <div className="rounded-lg border border-amber-300/10 bg-amber-300/[0.05] px-3 py-2 text-[9px] text-amber-200"><span className="mr-1.5 text-amber-300">●</span>{flagged.length} area{flagged.length === 1 ? "" : "s"} to review</div>
+      </div>
+      {analytics.zones.length ? <EnergyChart data={analytics.zones}/> : <div className="flex h-[300px] items-center justify-center text-xs text-slate-500">No zone readings are available yet.</div>}
+      <div className="mt-1 flex flex-wrap items-center gap-4 border-t border-white/[0.06] pt-3 text-[9px] text-slate-600">
+        <span>ENERGY · KWH</span><span>UTILIZATION · %</span>
+        <span className="ml-auto">Vacant-area threshold: {analytics.idleThresholdKwh} kWh</span>
+      </div>
+    </Panel>
+
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+      <Panel className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionHeading eyebrow="Shift comparison" title="Energy and utilization by shift" detail="Compare consumption with average area utilization across production shifts."/>
+          <div className="flex items-center gap-1.5 text-[9px] text-slate-500"><Clock3 size={12}/>{trendIsSample ? "Example trend" : "Historical data"}</div>
+        </div>
+        {analytics.shifts.length ? <ShiftTrendChart data={analytics.shifts}/> : <div className="flex h-[240px] items-center justify-center text-xs text-slate-500">No shift history is available yet.</div>}
+        {trendIsSample && <p className="mt-1 text-[9px] text-slate-600">Configure ANALYTICS_HISTORY_API_URL to replace the example trend with historical shift data.</p>}
+      </Panel>
+
+      <Panel>
+        <div className="border-b border-white/[0.06] px-5 py-4"><SectionHeading eyebrow="Cost optimization" title="Areas to investigate" detail="Energy remains high while the area is reported empty."/></div>
+        {flagged.length ? <div className="divide-y divide-white/[0.045]">{flagged.map((zone) => <div key={zone.zoneId} className="flex items-center gap-3 px-5 py-4">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-300/[0.08] text-amber-300"><TriangleAlert size={14}/></div>
+          <div className="min-w-0 flex-1"><div className="truncate text-xs font-medium text-slate-200">{zone.zone}</div><div className="mt-1 text-[9px] text-slate-500">Vacant · utilization {formatNumber(zone.utilizationPct, 1)}%</div></div>
+          <div className="text-right"><div className="font-mono text-xs text-rose-300">{formatNumber(zone.energyKwh)} <span className="text-[9px] text-slate-500">kWh</span></div><div className="mt-1 flex items-center justify-end gap-1 text-[9px] text-amber-400"><ArrowDownRight size={11}/> review draw</div></div>
+        </div>)}</div> : <div className="px-5 py-10 text-center text-xs text-slate-500">No empty areas exceed the configured energy threshold.</div>}
+      </Panel>
+    </div>
+
+    <Panel>
+      <div className="border-b border-white/[0.06] px-5 py-4"><SectionHeading eyebrow="Data quality" title="Analytics source status" detail={`Updated ${new Date(analytics.generatedAt).toLocaleString()}`}/></div>
+      <div className="grid gap-2 p-4 sm:grid-cols-3">{analytics.sources.map((source) => <div key={source.source} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+        <div className="flex items-center justify-between gap-2"><span className="text-[10px] font-medium text-slate-300">{source.source}</span><span className={`text-[9px] ${source.status === "connected" ? "text-emerald-300" : source.status === "error" ? "text-rose-300" : "text-slate-500"}`}>{source.status.replace("_", " ")}</span></div>
+        {source.error && <div className="mt-2 text-[9px] text-rose-300/80">{source.error}</div>}
+      </div>)}</div>
+      <div className="border-t border-white/[0.06] px-5 py-3 text-[9px] text-slate-600">Sources: {sourceNames.join(" · ")}. For live shift patterns, provide historical readings with shift, energyKwh, and utilizationPct.</div>
+    </Panel>
   </div>;
 }
