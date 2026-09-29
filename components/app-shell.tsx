@@ -7,6 +7,7 @@ import { Activity, Bell, ChevronDown, CircleHelp, Command, LayoutDashboard, Sett
 
 const nav = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Operations", href: "/operations", icon: Factory },
   { label: "Analytics", href: "/analytics", icon: ChartNoAxesCombined },
   { label: "Events", href: "/events", icon: ClipboardList, count: "3" },
   { label: "Settings", href: "/settings", icon: Settings },
