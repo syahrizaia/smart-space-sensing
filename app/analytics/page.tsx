@@ -1,5 +1,6 @@
 import { Activity, ArrowDownRight, Bolt, Clock3, Gauge, TriangleAlert } from "lucide-react";
 import { EnergyChart } from "@/components/energy-chart";
+import { AnalyticsFilters } from "@/components/analytics-filters";
 import { ShiftTrendChart } from "@/components/shift-trend-chart";
 import { MetricCard, Panel, SectionHeading } from "@/components/ui";
 import { getEnergyAnalytics } from "@/lib/analytics-service";
@@ -25,6 +26,8 @@ export default async function AnalyticsPage() {
         <span className="h-1.5 w-1.5 rounded-full bg-current"/>{modeLabel}
       </div>
     </div>
+
+    <AnalyticsFilters />
 
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard label="Energy consumed" value={formatNumber(analytics.summary.totalEnergyKwh)} unit="kWh" delta={analytics.dataMode === "live" ? "Current readings" : "Example readings"} hint="across monitored zones" icon={Bolt} tone="cyan"/>
