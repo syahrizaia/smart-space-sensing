@@ -1,15 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Activity, ArrowDownRight, Bolt, Clock3, Gauge, TriangleAlert } from "lucide-react";
 import { EnergyChart } from "@/components/energy-chart";
 import { AnalyticsFilters } from "@/components/analytics-filters";
 import { ShiftTrendChart } from "@/components/shift-trend-chart";
 import { MetricCard, Panel, SectionHeading } from "@/components/ui";
-import { getEnergyAnalytics } from "@/lib/analytics-service";
+import { useSelectedFacility } from "@/components/facility-selection";
+
+type AnalyticsData = {
+  generatedAt: string;
+  dataMode: "sample" | "live";
+  idleThresholdKwh: number;
+  summary: { totalEnergyKwh: number; averageUtilizationPct: number | null; flaggedZoneCount: number; energyInFlaggedZonesKwh: number };
+  zones: { zoneId: string; zone: string; energyKwh: number | null; occupied: boolean | null; utilizationPct: number | null; status: string; alert: boolean }[];
+  alerts: { zoneId: string; zone: string; energyKwh: number | null; utilizationPct: number | null }[];
+  shifts: { shift: string; period?: string; energyKwh: number; utilizationPct: number }[];
+  sources: { source: string; status: string; timestamp: string; error?: string }[];
+  shiftTrendMode: "sample" | "live";
+};
 
 const formatNumber = (value: number | null, digits = 0) =>
   value === null ? "—" : value.toLocaleString("en-US", { maximumFractionDigits: digits });
 
-export default async function AnalyticsPage() {
-  const analytics = await getEnergyAnalytics();
+export default function AnalyticsPage() {
+  const facility = useSelectedFacility();
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  useEffect(() => {
+    let current = true;
+    fetch(`/api/analytics?facility=${encodeURIComponent(facility)}`, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("Analytics request failed");
+        return response.json() as Promise<{ data: AnalyticsData }>;
+      })
+      .then(({ data }) => { if (current) setAnalytics(data); })
+      .catch(() => { if (current) setAnalytics(null); });
+    return () => { current = false; };
+  }, [facility]);
+
+  if (!analytics) return <div className="space-y-2"><div className="text-[10px] font-medium uppercase tracking-[0.19em] text-slate-500">{facility} / Energy</div><h1 className="text-[25px] font-semibold tracking-tight text-slate-50 sm:text-[29px]">Cost &amp; energy optimization</h1><p className="text-xs text-slate-500">Loading readings for {facility}…</p></div>;
   const flagged = analytics.alerts;
   const sourceNames = analytics.sources.map((source) => source.source);
   const trendIsSample = analytics.shiftTrendMode === "sample";
@@ -18,7 +47,7 @@ export default async function AnalyticsPage() {
   return <div className="space-y-7">
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.19em] text-slate-500">Performance intelligence <span className="mx-1.5 text-slate-700">/</span> Energy</div>
+        <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.19em] text-slate-500">{facility} <span className="mx-1.5 text-slate-700">/</span> Energy</div>
         <h1 className="text-[25px] font-semibold tracking-tight text-slate-50 sm:text-[29px]">Cost &amp; energy optimization</h1>
         <p className="mt-1.5 text-xs text-slate-500">Find energy use that does not match area activity and compare shifts.</p>
       </div>
@@ -27,7 +56,7 @@ export default async function AnalyticsPage() {
       </div>
     </div>
 
-    <AnalyticsFilters />
+    <AnalyticsFilters zones={analytics.zones.map((zone) => zone.zone)} />
 
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard label="Energy consumed" value={formatNumber(analytics.summary.totalEnergyKwh)} unit="kWh" delta={analytics.dataMode === "live" ? "Current readings" : "Example readings"} hint="across monitored zones" icon={Bolt} tone="cyan"/>
@@ -69,7 +98,7 @@ export default async function AnalyticsPage() {
     </div>
 
     <Panel>
-      <div className="border-b border-white/[0.06] px-5 py-4"><SectionHeading eyebrow="Data quality" title="Analytics source status" detail={`Updated ${new Date(analytics.generatedAt).toLocaleString()}`}/></div>
+      <div className="border-b border-white/[0.06] px-5 py-4"><SectionHeading eyebrow="Data quality" title="Analytics source status" detail={`Updated ${new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" }).format(new Date(analytics.generatedAt))}`}/></div>
       <div className="grid gap-2 p-4 sm:grid-cols-3">{analytics.sources.map((source) => <div key={source.source} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
         <div className="flex items-center justify-between gap-2"><span className="text-[10px] font-medium text-slate-300">{source.source}</span><span className={`text-[9px] ${source.status === "connected" ? "text-emerald-300" : source.status === "error" ? "text-rose-300" : "text-slate-500"}`}>{source.status.replace("_", " ")}</span></div>
         {source.error && <div className="mt-2 text-[9px] text-rose-300/80">{source.error}</div>}

@@ -53,3 +53,51 @@ export const energyByZone = [
 ];
 
 export const zoneName = (id: string) => zones.find((zone) => zone.id === id)?.name ?? id;
+
+const alternateZoneNames = {
+  "Jakarta Plant 02": ["Fabrication", "Assembly", "Packing", "Warehouse", "Paint Shop", "Loading Bay", "Utilities", "Quality Lab"],
+  "Jakarta Plant 03": ["Line 3A", "Packaging", "Quality Control", "Dispatch", "Cold Storage 03", "Loading Dock", "Utilities 03", "Lab 03"],
+} as const;
+
+export function getFacilityMockData(facility: "Jakarta Plant 01" | "Jakarta Plant 02" | "Jakarta Plant 03") {
+  if (facility === "Jakarta Plant 01") return { zones, events, energyByZone };
+  const prefix = facility === "Jakarta Plant 02" ? "P2" : "P3";
+  const offset = facility === "Jakarta Plant 02" ? 24 : -17;
+  const names = alternateZoneNames[facility];
+  const facilityZones = zones.map((zone, index) => ({
+    ...zone,
+    id: `${prefix}-${zone.id}`,
+    name: names[index],
+    energyUsage: Math.max(0, zone.energyUsage + offset + index * 3),
+    isOccupied: facility === "Jakarta Plant 02" ? index !== 2 && index !== 7 : index !== 4 && index !== 5,
+    status: facility === "Jakarta Plant 02" && index === 5 ? "Offline" as const : facility === "Jakarta Plant 03" && index === 4 ? "Idle" as const : zone.status,
+  }));
+  const facilityEvents = events.map((event) => ({
+    ...event,
+    id: `${prefix}-${event.id}`,
+    zoneId: `${prefix}-${event.zoneId}`,
+    description: `${facility}: ${event.description}`,
+    resolutionStatus: facility === "Jakarta Plant 02" && event.id === "EV-1043"
+      ? "Open" as const
+      : facility === "Jakarta Plant 03" && event.id === "EV-1048"
+        ? "Resolved" as const
+        : event.resolutionStatus,
+  }));
+  const facilityEnergy = energyByZone.map((reading, index) => ({
+    ...reading,
+    zone: names[index].replace("Cold Storage 03", "Cold store").replace("Loading Dock", "Loading"),
+    energy: Math.max(0, reading.energy + offset + index * 3),
+    occupancy: Math.max(0, Math.min(8, reading.occupancy + (facility === "Jakarta Plant 02" ? -0.8 : 0.5))),
+  }));
+  return { zones: facilityZones, events: facilityEvents, energyByZone: facilityEnergy };
+}
+
+export function getFacilityZoneName(id: string) {
+  const prefix = id.startsWith("P2-") ? "P2" : id.startsWith("P3-") ? "P3" : "";
+  const baseId = prefix ? id.slice(prefix.length + 1) : id;
+  const baseZone = zones.find((zone) => zone.id === baseId);
+  if (!baseZone) return id;
+  if (!prefix) return baseZone.name;
+  const facility = prefix === "P2" ? "Jakarta Plant 02" : "Jakarta Plant 03";
+  return alternateZoneNames[facility][zones.indexOf(baseZone)];
+}

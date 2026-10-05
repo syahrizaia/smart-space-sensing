@@ -1,5 +1,5 @@
 import "server-only";
-import { energyByZone, zoneName, zones } from "@/lib/mockData";
+import { getFacilityMockData, getFacilityZoneName } from "@/lib/mockData";
 import {
   getAnalyticsHistory,
   getEnergyReadings,
@@ -42,7 +42,7 @@ function aggregateShiftHistory(rows: AnalyticsHistoryRow[]): ShiftTrend[] {
   }));
 }
 
-export async function getEnergyAnalytics() {
+export async function getEnergyAnalytics(facility: "Jakarta Plant 01" | "Jakarta Plant 02" | "Jakarta Plant 03" = "Jakarta Plant 01") {
   const [wifi, energy, history] = await Promise.all([
     getWifiActivity(),
     getEnergyReadings(),
@@ -56,8 +56,9 @@ export async function getEnergyAnalytics() {
 
   let rows: AnalyticsZone[];
   if (demoMode) {
-    const usageByZone = new Map(energyByZone.map((row) => [row.zone.toLowerCase(), row]));
-    rows = zones.map((zone) => {
+    const facilityData = getFacilityMockData(facility);
+    const usageByZone = new Map(facilityData.energyByZone.map((row) => [row.zone.toLowerCase(), row]));
+    rows = facilityData.zones.map((zone) => {
       const sample = usageByZone.get(zone.name.toLowerCase()) ?? usageByZone.get(zone.name.replace("Cold Storage", "Cold store").toLowerCase());
       const energyKwh = sample?.energy ?? zone.energyUsage;
       const utilizationPct = sample ? Number((sample.occupancy / 8 * 100).toFixed(1)) : null;
@@ -82,7 +83,7 @@ export async function getEnergyAnalytics() {
       const energyKwh = meter?.energyUsage ?? null;
       return {
         zoneId: meter?.zoneId ?? activity?.zoneId ?? id,
-        zone: zoneName(meter?.zoneId ?? activity?.zoneId ?? id),
+      zone: getFacilityZoneName(meter?.zoneId ?? activity?.zoneId ?? id),
         energyKwh,
         occupied,
         utilizationPct: occupied === null ? null : occupied ? 100 : 0,
@@ -113,7 +114,11 @@ export async function getEnergyAnalytics() {
     },
     zones: rows,
     alerts: flaggedZones,
-    shifts: history.status === "connected" ? historyTrends : sampleShiftTrends,
+    shifts: history.status === "connected" ? historyTrends : sampleShiftTrends.map((shift) => ({
+      ...shift,
+      energyKwh: Number((shift.energyKwh * (facility === "Jakarta Plant 02" ? 1.12 : facility === "Jakarta Plant 03" ? 0.91 : 1)).toFixed(1)),
+      utilizationPct: Number((shift.utilizationPct + (facility === "Jakarta Plant 02" ? -5 : facility === "Jakarta Plant 03" ? 8 : 0)).toFixed(1)),
+    })),
     sources: [wifi, energy, history].map((source: SourceResult<unknown>) => ({
       source: source.source,
       status: source.status,

@@ -4,16 +4,6 @@ import { useState } from "react";
 import { CalendarDays, ChevronDown, Clock3, MapPin } from "lucide-react";
 
 const timeRangeOptions = ["Today", "Last 7 Days", "This Month", "Custom Range"] as const;
-const zoneGroups = [
-  {
-    label: "Zona Administratif & Pemantauan - Office & Control",
-    options: [
-      "Ruang Kontrol (Control Room)",
-      "Kantor Pabrik (Plant Office)",
-    ],
-  },
-] as const;
-const zoneOptions = ["All Zones", ...zoneGroups.flatMap((group) => group.options)] as const;
 const shiftOptions = [
   "All Shifts",
   "Morning Shift (06:00-14:00)",
@@ -23,7 +13,7 @@ const shiftOptions = [
 
 type FilterValues = {
   timeRange: (typeof timeRangeOptions)[number];
-  zone: (typeof zoneOptions)[number];
+  zone: string;
   shift: (typeof shiftOptions)[number];
 };
 
@@ -35,15 +25,11 @@ const filterConfig = [
   { key: "shift", label: "Shift", icon: Clock3 },
 ] as const;
 
-function FilterOptions({ filter }: { filter: (typeof filterConfig)[number]["key"] }) {
+function FilterOptions({ filter, zones }: { filter: (typeof filterConfig)[number]["key"]; zones: string[] }) {
   if (filter === "zone") {
     return <>
       <option value="All Zones" className="bg-[#0e141b] text-slate-200">All Zones</option>
-      {zoneGroups.map((group) => (
-        <optgroup key={group.label} label={group.label}>
-          {group.options.map((option) => <option key={option} value={option} className="bg-[#0e141b] text-slate-200">{option}</option>)}
-        </optgroup>
-      ))}
+      {zones.map((option) => <option key={option} value={option} className="bg-[#0e141b] text-slate-200">{option}</option>)}
     </>;
   }
 
@@ -51,7 +37,7 @@ function FilterOptions({ filter }: { filter: (typeof filterConfig)[number]["key"
   return <>{options.map((option) => <option key={option} value={option} className="bg-[#0e141b] text-slate-200">{option}</option>)}</>;
 }
 
-export function AnalyticsFilters() {
+export function AnalyticsFilters({ zones }: { zones: string[] }) {
   const [filters, setFilters] = useState<FilterValues>({
     timeRange: "Last 7 Days",
     zone: "All Zones",
@@ -81,7 +67,7 @@ export function AnalyticsFilters() {
               onChange={(event) => handleFilterChange(key, event.target.value as FilterValues[typeof key])}
               className="h-10 w-full appearance-none rounded-lg border border-white/[0.08] bg-[#0e141b] pl-3 pr-9 text-xs text-slate-200 outline-none transition-colors hover:border-white/[0.14] focus:border-cyan-300/40 focus:ring-2 focus:ring-cyan-300/10"
             >
-              <FilterOptions filter={key} />
+              <FilterOptions filter={key} zones={zones} />
             </select>
             <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           </div>
