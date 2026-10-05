@@ -7,11 +7,11 @@ export type ZoneStatus = "Active" | "Idle" | "Offline";
 export type ScheduleRange = "Day" | "Week" | "Month";
 export type ProductionBatch = { time: string; product: string; target: number; status: "Complete" | "In progress" | "Upcoming" };
 export type ScheduleData = Record<ScheduleRange, ProductionBatch[]>;
-export type FacilityZone = { id: string; name: string; status: ZoneStatus; output: number; cctvFeedUrls: string[]; ruviewUrl: string };
+export type FacilityZone = { id: string; name: string; status: ZoneStatus; output: number; cctvFeedUrls: string[]; ruviewUrl: string; ruViewScanUrl: string };
 export type Equipment = {
   id: string; name: string; zone: string; zoneId: string; status: ZoneStatus;
   temperature: number; speed: number; vibration: number; pressure: number; power: number; efficiency: number; runtimeHours: number;
-  machineViewUrl: string; schedule: ScheduleData;
+  machineViewUrl: string; machine3DModelUrl: string; schedule: ScheduleData;
 };
 
 const batch = (time: string, product: string, target: number, status: ProductionBatch["status"]): ProductionBatch => ({ time, product, target, status });
@@ -44,6 +44,7 @@ function facilityZones(facility: FacilityName): FacilityZone[] {
     output: zone.output ? Math.max(0, Math.min(99, zone.output + profile.outputOffset + index * 2)) : 0,
     cctvFeedUrls: zone.cctvFeedUrls.map((url) => url.replace(zone.id, `${profile.prefix}-${zone.id}`)),
     ruviewUrl: zone.ruviewUrl.replace(zone.id, `${profile.prefix}-${zone.id}`),
+    ruViewScanUrl: zone.ruViewScanUrl.replace(zone.id, `${profile.prefix}-${zone.id}`),
   }));
 }
 
@@ -54,6 +55,7 @@ function facilityEquipment(facility: FacilityName, zones: FacilityZone[]): Equip
     const zone = zones[index];
     const active = zone.status === "Active";
     const id = `${profile.prefix}-${machine.id}`;
+    const modelUrl = facility === "Jakarta Plant 02" && index === 0 ? "/models/machines/zareff_laser_cutter.glb" : `/models/machines/${id}.ssm`;
     return {
       ...machine,
       id,
@@ -64,7 +66,8 @@ function facilityEquipment(facility: FacilityName, zones: FacilityZone[]): Equip
       temperature: Math.round((machine.temperature + (facility === "Jakarta Plant 02" ? 5 : -3) + index) * 10) / 10,
       speed: active ? Math.round(machine.speed * (facility === "Jakarta Plant 02" ? 0.91 : 1.08)) : 0,
       efficiency: Math.max(0, Math.min(100, Math.round((machine.efficiency + profile.efficiencyOffset + index) * 10) / 10)),
-      machineViewUrl: `/mock-3d/machines/${id}`,
+      machineViewUrl: modelUrl,
+      machine3DModelUrl: modelUrl,
       schedule: machineSchedule(profile.products[index], Math.round(machine.schedule.Day[0]?.target / 0.42 || 1000)),
     };
   });
@@ -81,16 +84,16 @@ export function getFacilitySchedules(facility: FacilityName): ScheduleData {
   };
 }
 const initialZones: FacilityZone[] = [
-  { id: "Z-01", name: "Produksi", status: "Active", output: 84, cctvFeedUrls: ["/mock-cctv/Z-01/cam-01", "/mock-cctv/Z-01/cam-02", "/mock-cctv/Z-01/cam-03", "/mock-cctv/Z-01/cam-04"], ruviewUrl: "/mock-ruview/scans/Z-01" },
-  { id: "Z-02", name: "Packing", status: "Active", output: 72, cctvFeedUrls: ["/mock-cctv/Z-02/cam-01", "/mock-cctv/Z-02/cam-02", "/mock-cctv/Z-02/cam-03", "/mock-cctv/Z-02/cam-04"], ruviewUrl: "/mock-ruview/scans/Z-02" },
-  { id: "Z-03", name: "Utilitas", status: "Idle", output: 0, cctvFeedUrls: ["/mock-cctv/Z-03/cam-01", "/mock-cctv/Z-03/cam-02", "/mock-cctv/Z-03/cam-03", "/mock-cctv/Z-03/cam-04"], ruviewUrl: "/mock-ruview/scans/Z-03" },
-  { id: "Z-04", name: "Gudang", status: "Active", output: 91, cctvFeedUrls: ["/mock-cctv/Z-04/cam-01", "/mock-cctv/Z-04/cam-02", "/mock-cctv/Z-04/cam-03", "/mock-cctv/Z-04/cam-04"], ruviewUrl: "/mock-ruview/scans/Z-04" },
+  { id: "Z-01", name: "Produksi", status: "Active", output: 84, cctvFeedUrls: ["/mock-cctv/Z-01/cam-01", "/mock-cctv/Z-01/cam-02", "/mock-cctv/Z-01/cam-03", "/mock-cctv/Z-01/cam-04"], ruviewUrl: "/mock-ruview/scans/Z-01", ruViewScanUrl: "/mock-ruview/scans/Z-01" },
+  { id: "Z-02", name: "Packing", status: "Active", output: 72, cctvFeedUrls: ["/mock-cctv/Z-02/cam-01", "/mock-cctv/Z-02/cam-02", "/mock-cctv/Z-02/cam-03", "/mock-cctv/Z-02/cam-04"], ruviewUrl: "/mock-ruview/scans/Z-02", ruViewScanUrl: "/mock-ruview/scans/Z-02" },
+  { id: "Z-03", name: "Utilitas", status: "Idle", output: 0, cctvFeedUrls: ["/mock-cctv/Z-03/cam-01", "/mock-cctv/Z-03/cam-02", "/mock-cctv/Z-03/cam-03", "/mock-cctv/Z-03/cam-04"], ruviewUrl: "/mock-ruview/scans/Z-03", ruViewScanUrl: "/mock-ruview/scans/Z-03" },
+  { id: "Z-04", name: "Gudang", status: "Active", output: 91, cctvFeedUrls: ["/mock-cctv/Z-04/cam-01", "/mock-cctv/Z-04/cam-02", "/mock-cctv/Z-04/cam-03", "/mock-cctv/Z-04/cam-04"], ruviewUrl: "/mock-ruview/scans/Z-04", ruViewScanUrl: "/mock-ruview/scans/Z-04" },
 ];
 const initialEquipment: Equipment[] = [
-  { id: "M-204", name: "CNC Machining Center", zone: "Produksi", zoneId: "Z-01", temperature: 68, speed: 1420, vibration: 2.1, pressure: 6.4, power: 18.2, efficiency: 91.4, runtimeHours: 1268, status: "Active", machineViewUrl: "/mock-3d/machines/M-204", schedule: machineSchedule("Housing assembly · Series A", 2400) },
-  { id: "M-118", name: "Automated Packer 02", zone: "Packing", zoneId: "Z-02", temperature: 54, speed: 860, vibration: 1.4, pressure: 5.8, power: 11.6, efficiency: 87.2, runtimeHours: 842, status: "Active", machineViewUrl: "/mock-3d/machines/M-118", schedule: machineSchedule("Control module · Series C", 1800) },
-  { id: "U-031", name: "Air Compressor", zone: "Utilitas", zoneId: "Z-03", temperature: 42, speed: 0, vibration: 0.4, pressure: 7.1, power: 3.2, efficiency: 78.6, runtimeHours: 2084, status: "Idle", machineViewUrl: "/mock-3d/machines/U-031", schedule: machineSchedule("Compressed air demand", 980) },
-  { id: "W-012", name: "Conveyor Line 04", zone: "Gudang", zoneId: "Z-04", temperature: 39, speed: 920, vibration: 1.1, pressure: 4.2, power: 8.4, efficiency: 94.1, runtimeHours: 613, status: "Active", machineViewUrl: "/mock-3d/machines/W-012", schedule: machineSchedule("Finished goods transfer", 2100) },
+  { id: "M-204", name: "CNC Machining Center", zone: "Produksi", zoneId: "Z-01", temperature: 68, speed: 1420, vibration: 2.1, pressure: 6.4, power: 18.2, efficiency: 91.4, runtimeHours: 1268, status: "Active", machineViewUrl: "/models/machines/M-204.ssm", machine3DModelUrl: "/models/machines/M-204.ssm", schedule: machineSchedule("Housing assembly · Series A", 2400) },
+  { id: "M-118", name: "Automated Packer 02", zone: "Packing", zoneId: "Z-02", temperature: 54, speed: 860, vibration: 1.4, pressure: 5.8, power: 11.6, efficiency: 87.2, runtimeHours: 842, status: "Active", machineViewUrl: "/models/machines/M-118.ssm", machine3DModelUrl: "/models/machines/M-118.ssm", schedule: machineSchedule("Control module · Series C", 1800) },
+  { id: "U-031", name: "Air Compressor", zone: "Utilitas", zoneId: "Z-03", temperature: 42, speed: 0, vibration: 0.4, pressure: 7.1, power: 3.2, efficiency: 78.6, runtimeHours: 2084, status: "Idle", machineViewUrl: "/models/machines/U-031.ssm", machine3DModelUrl: "/models/machines/U-031.ssm", schedule: machineSchedule("Compressed air demand", 980) },
+  { id: "W-012", name: "Conveyor Line 04", zone: "Gudang", zoneId: "Z-04", temperature: 39, speed: 920, vibration: 1.1, pressure: 4.2, power: 8.4, efficiency: 94.1, runtimeHours: 613, status: "Active", machineViewUrl: "/models/machines/W-012.ssm", machine3DModelUrl: "/models/machines/W-012.ssm", schedule: machineSchedule("Finished goods transfer", 2100) },
 ];
 
 export function useLiveFacility(facility: FacilityName = "Jakarta Plant 01") {
