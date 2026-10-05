@@ -41,16 +41,51 @@ void main() {
   outColor = vec4(vec3(0.34, 0.64, 0.75) * light, 1.0);
 }`;
 
-let meshPromise: Promise<ParsedMesh> | null = null;
+const meshPromises = new Map<string, Promise<ParsedMesh>>();
 
-function loadMesh() {
-  if (!meshPromise) {
-    meshPromise = fetch("/models/warehouse-lathe.ssm").then(async (response) => {
-      if (!response.ok) throw new Error("Model Warehouse tidak bisa dimuat.");
+function loadMesh(url: string) {
+  if (!meshPromises.has(url)) {
+    meshPromises.set(url, fetch(url).then(async (response) => {
+      if (!response.ok) throw new Error("Model mesin tidak bisa dimuat.");
       return parseMesh(await response.arrayBuffer());
-    });
+    }));
   }
-  return meshPromise;
+  return meshPromises.get(url)!;
+}
+
+function GlbMachineModel({ modelUrl, className = "" }: { modelUrl: string; className?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let disposed = false;
+    let viewer: HTMLElement | null = null;
+    void import("@google/model-viewer").then(() => {
+      if (disposed || !containerRef.current) return;
+      viewer = document.createElement("model-viewer");
+      viewer.setAttribute("src", modelUrl);
+      viewer.setAttribute("alt", "Interactive 3D machine model");
+      viewer.setAttribute("camera-controls", "");
+      viewer.setAttribute("auto-rotate", "");
+      viewer.setAttribute("loading", "eager");
+      viewer.setAttribute("shadow-intensity", "1");
+      viewer.setAttribute("exposure", "1");
+      viewer.style.width = "100%";
+      viewer.style.height = "100%";
+      viewer.style.display = "block";
+      viewer.addEventListener("load", () => setLoaded(true), { once: true });
+      viewer.addEventListener("error", () => setFailed(true), { once: true });
+      containerRef.current.appendChild(viewer);
+      (viewer as HTMLElement & { dismissPoster: () => void }).dismissPoster();
+    }).catch(() => setFailed(true));
+    return () => { disposed = true; viewer?.remove(); };
+  }, [modelUrl]);
+
+  return <div ref={containerRef} className={className}>
+    {!loaded && !failed && <span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-cyan-300/70"><LoaderCircle size={18} className="animate-spin"/></span>}
+    {failed && <span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 text-xs text-rose-300"><AlertCircle size={15}/>Model gagal dimuat</span>}
+  </div>;
 }
 
 function parseMesh(buffer: ArrayBuffer): ParsedMesh {
@@ -108,7 +143,7 @@ function buildProgram(gl: WebGL2RenderingContext) {
   return program;
 }
 
-function WarehouseModelCanvas({ className, rotation, zoom, onRotate, onZoom, onActivate, hint = false }: {
+function WarehouseModelCanvas({ className, rotation, zoom, onRotate, onZoom, onActivate, hint = false, modelUrl = "/models/warehouse-lathe.ssm" }: {
   className: string;
   rotation: Rotation;
   zoom: number;
@@ -116,6 +151,7 @@ function WarehouseModelCanvas({ className, rotation, zoom, onRotate, onZoom, onA
   onZoom: (zoom: number) => void;
   onActivate?: () => void;
   hint?: boolean;
+  modelUrl?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderRef = useRef<(() => void) | null>(null);
@@ -134,7 +170,7 @@ function WarehouseModelCanvas({ className, rotation, zoom, onRotate, onZoom, onA
 
     async function initialize() {
       try {
-        const mesh = await loadMesh();
+        const mesh = await loadMesh(modelUrl);
         if (disposed || !canvasRef.current) return;
         gl = canvasRef.current.getContext("webgl2", { alpha: true, antialias: true, powerPreference: "low-power" });
         if (!gl) throw new Error("Browser ini tidak mendukung pratinjau WebGL 2.");
@@ -183,7 +219,7 @@ function WarehouseModelCanvas({ className, rotation, zoom, onRotate, onZoom, onA
       disposed = true; observer?.disconnect(); renderRef.current = null;
       if (gl) { for (const buffer of buffers) gl.deleteBuffer(buffer); if (program) gl.deleteProgram(program); }
     };
-  }, []);
+  }, [modelUrl]);
 
   function pointerDown(event: React.PointerEvent<HTMLDivElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -250,4 +286,15 @@ export function WarehouseMachineViewer({ className = "" }: { className?: string 
     <WarehouseModelCanvas className={className} rotation={rotation} zoom={zoom} onRotate={setRotation} onZoom={setZoom} onActivate={() => setDetailsOpen(true)} hint/>
     {detailsOpen && <MachineDetails rotation={rotation} zoom={zoom} onRotate={setRotation} onZoom={setZoom} onClose={() => setDetailsOpen(false)}/>}
   </>;
+}
+
+export function MachineModelPreview({ modelUrl, className = "" }: { modelUrl: string; className?: string }) {
+  if (modelUrl.toLowerCase().endsWith(".glb")) return <GlbMachineModel modelUrl={modelUrl} className={className}/>;
+  return <SsmMachineModel modelUrl={modelUrl} className={className}/>;
+}
+
+function SsmMachineModel({ modelUrl, className }: { modelUrl: string; className: string }) {
+  const [rotation, setRotation] = useState<Rotation>({ x: -0.38, y: 0.68 });
+  const [zoom, setZoom] = useState(1.15);
+  return <WarehouseModelCanvas className={className} rotation={rotation} zoom={zoom} onRotate={setRotation} onZoom={setZoom} modelUrl={modelUrl}/>;
 }
