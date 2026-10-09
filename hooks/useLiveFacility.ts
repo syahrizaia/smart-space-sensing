@@ -29,7 +29,7 @@ const machineSchedule = (product: string, dailyTarget: number): ScheduleData => 
 export const facilitySchedules = facilitySchedule;
 
 const alternateFacilityProfiles: Record<Exclude<FacilityName, "Jakarta Plant 01">, { prefix: string; zones: string[]; machines: string[]; products: string[]; outputOffset: number; efficiencyOffset: number }> = {
-  "Jakarta Plant 02": { prefix: "P2", zones: ["Fabrication", "Assembly", "Utilities", "Warehouse"], machines: ["Laser Cutter 02", "Robotic Assembler", "Boiler Unit", "Pallet Conveyor"], products: ["Steel frame · Series D", "Motor housing · Series E", "Steam supply", "Finished frame transfer"], outputOffset: -9, efficiencyOffset: -4.5 },
+  "Jakarta Plant 02": { prefix: "P2", zones: ["Fabrication", "Assembly", "Utilities", "Warehouse"], machines: ["Laser Cutter 02", "Case Packer 03", "Inspection Station", "Pallet Conveyor"], products: ["Steel frame · Series D", "Export carton · Series G", "Valve inspection lot", "Finished frame transfer"], outputOffset: -9, efficiencyOffset: -4.5 },
   "Jakarta Plant 03": { prefix: "P3", zones: ["Line 3A", "Packaging", "Quality Control", "Dispatch"], machines: ["CNC Precision Mill 03", "Case Packer 03", "Inspection Station", "Dispatch Conveyor"], products: ["Precision valve · Series F", "Export carton · Series G", "Valve inspection lot", "Export order transfer"], outputOffset: 7, efficiencyOffset: 2.8 },
 };
 
@@ -55,11 +55,19 @@ function facilityEquipment(facility: FacilityName, zones: FacilityZone[]): Equip
     const zone = zones[index];
     const active = zone.status === "Active";
     const id = `${profile.prefix}-${machine.id}`;
-    const modelUrl = facility === "Jakarta Plant 02" && index === 0
-      ? "/models/machines/zareff_laser_cutter.glb"
-      : facility === "Jakarta Plant 03" && index === 0
-        ? "/models/machines/vertical_milling_machine.glb"
-        : `/models/machines/${id}.ssm`;
+    let modelUrl = `/models/machines/${id}.ssm`;
+    if (facility === "Jakarta Plant 02" && index === 0) modelUrl = "/models/machines/zareff_laser_cutter.glb";
+    else if ((facility === "Jakarta Plant 02" || facility === "Jakarta Plant 03") && index === 1) {
+      modelUrl = "/models/machines/packaging%20machine%203d%20model%20%282%29.glb";
+    } else if ((facility === "Jakarta Plant 02" || facility === "Jakarta Plant 03") && index === 2) {
+      modelUrl = "/models/machines/industrial%20machine%203d%20model.glb";
+    } else if (facility === "Jakarta Plant 03" && index === 0) {
+      modelUrl = "/models/machines/vertical_milling_machine.glb";
+    } else if (facility === "Jakarta Plant 03" && index === 3) {
+      modelUrl = "/models/machines/industrial%20conveyor%20system%203d%20model.glb";
+    } else if (facility === "Jakarta Plant 02" && index === 3) {
+      modelUrl = "/models/machines/industrial%20belt%20conveyor%203d%20model.glb";
+    }
     return {
       ...machine,
       id,
